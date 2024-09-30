@@ -1,22 +1,22 @@
-interface Candidate {
+export interface Candidate {
 	id: string;
 	name: string;
 	ratings: CategoryRatings;
 	data: CandidateData;
 }
 
-interface CategoryRatings {
+export interface CategoryRatings {
 	[key: string]: Glicko;
 }
 
-interface Glicko {
+export interface Glicko {
 	id: string;
 	rd: number;
 	rating: number;
 	vol: number;
 }
 
-interface CandidateData {
+export interface CandidateData {
 	[key: string]: {
 		question: string;
 		answer: any;
@@ -24,7 +24,7 @@ interface CandidateData {
 	};
 }
 
-interface Comparison {
+export interface Comparison {
 	id: string;
 	candidates: {
 		[id: string]: Candidate;
@@ -34,7 +34,7 @@ interface Comparison {
 	};
 }
 
-interface ComparisonVector {
+export interface ComparisonVector {
 	name: string;
 	question: string;
 	winner?: Candidate["id"];

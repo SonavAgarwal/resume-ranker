@@ -4,124 +4,32 @@ import React from 'react'
 import Profile from './Profile'
 import { useForm } from 'react-hook-form'
 import clsx from 'clsx'
+import useSWR from 'swr'
+import { Comparison } from '@/lib/types.alias'
 
 interface Props {}
-
-const comparison: Comparison = {
-    id: '1',
-    candidates: {
-        '1': {
-            id: '1',
-            name: 'John Doe',
-            ratings: {
-                '1': {
-                    id: '1',
-                    rd: 100,
-                    rating: 1500,
-                    vol: 0.06
-                },
-                '2': {
-                    id: '2',
-                    rd: 100,
-                    rating: 1500,
-                    vol: 0.06
-                }
-            },
-            data: {
-                experience: {
-                    question: 'How many years of experience do you have?',
-                    answer: 5
-                },
-                skills: {
-                    question: 'What skills do you have?',
-                    answer: ['React', 'Node.js']
-                },
-                education: {
-                    question: 'What is your highest level of education?',
-                    answer: 'Bachelors'
-                },
-                experience2: {
-                    question: 'How many years of experience do you have?',
-                    answer: 5
-                },
-                skills2: {
-                    question: 'What skills do you have?',
-                    answer: ['React', 'Node.js']
-                },
-                education2: {
-                    question: 'What is your highest level of education?',
-                    answer: 'Bachelors'
-                },
-                experience3: {
-                    question: 'How many years of experience do you have?',
-                    answer: 5
-                },
-                skills3: {
-                    question: 'What skills do you have?',
-                    answer: ['React', 'Node.js']
-                },
-                education3: {
-                    question: 'What is your highest level of education?',
-                    answer: 'Bachelors'
-                },
-                cv: {
-                    question: 'pdf',
-                    answer: 'https://drive.google.com/file/d/15hoSZhWTqtVqFkLE9BIboZ8zVY68EoeN/preview'
-                }
-            }
-        },
-        '2': {
-            id: '2',
-            name: 'Jane Doe',
-            ratings: {
-                '1': {
-                    id: '1',
-                    rd: 100,
-                    rating: 1500,
-                    vol: 0.06
-                },
-                '2': {
-                    id: '2',
-                    rd: 100,
-                    rating: 1500,
-                    vol: 0.06
-                }
-            },
-            data: {
-                experience: {
-                    question: 'How many years of experience do you have?',
-                    answer: 3
-                },
-                skills: {
-                    question: 'What skills do you have?',
-                    answer: ['Vue', 'Express']
-                }
-            }
-        }
-    },
-    vectors: {
-        experience: {
-            name: 'experience',
-            question: 'Which candidate has more experience?'
-        },
-        skills: {
-            name: 'skills',
-            question: 'Which candidate has more skills?'
-        },
-        education: {
-            name: 'education',
-            question: 'Which candidate has a higher level of education?'
-        }
-    }
-}
 
 const Page = (props: Props) => {
     const { register, handleSubmit, watch } = useForm()
 
+    const {
+        data: comparison,
+        isLoading,
+        error
+    } = useSWR<Comparison>('http://localhost:3001/comparison', (url: string) =>
+        fetch(url).then((res) => res.json())
+    )
+
+    if (isLoading) return <div>Loading...</div>
+    if (error || !comparison) return <div>Error loading comparison</div>
+
+    const c1Id = Object.keys(comparison.candidates)[0]
+    const c2Id = Object.keys(comparison.candidates)[1]
+
     return (
         <div className="flex h-screen w-full flex-row items-center justify-center gap-4 p-4">
-            <Profile profile={comparison.candidates['1']} />
-            <Profile profile={comparison.candidates['2']} />
+            <Profile profile={comparison.candidates[c1Id]} />
+            <Profile profile={comparison.candidates[c2Id]} />
             <div className="flex h-full w-72 flex-col bg-gray-100">
                 <div className="border-b-2 border-b-gray-200 bg-gray-100 p-4 font-bold">
                     <h1 className="text-2xl font-bold">Comparison</h1>
@@ -136,8 +44,7 @@ const Page = (props: Props) => {
                                 <label
                                     className={clsx(
                                         'flex flex-1 cursor-pointer items-center justify-center rounded-md p-4',
-                                        watch(`${key}-winner`) ===
-                                            comparison.candidates['1'].id
+                                        watch(`${key}-winner`) === c1Id
                                             ? 'bg-green-400'
                                             : 'bg-gray-200'
                                     )}
@@ -145,16 +52,15 @@ const Page = (props: Props) => {
                                     <input
                                         type="radio"
                                         className="hidden"
-                                        value={comparison.candidates['1'].id}
+                                        value={c1Id}
                                         {...register(`${key}-winner`)}
                                     />
-                                    {comparison.candidates['1'].name}
+                                    {comparison.candidates[c1Id].name}
                                 </label>
                                 <label
                                     className={clsx(
                                         'flex flex-1 cursor-pointer items-center justify-center rounded-md p-4',
-                                        watch(`${key}-winner`) ===
-                                            comparison.candidates['2'].id
+                                        watch(`${key}-winner`) === c2Id
                                             ? 'bg-green-400'
                                             : 'bg-gray-200'
                                     )}
@@ -162,10 +68,10 @@ const Page = (props: Props) => {
                                     <input
                                         type="radio"
                                         className="hidden"
-                                        value={comparison.candidates['2'].id}
+                                        value={c2Id}
                                         {...register(`${key}-winner`)}
                                     />
-                                    {comparison.candidates['2'].name}
+                                    {comparison.candidates[c2Id].name}
                                 </label>
                             </div>
                         </div>

@@ -1,0 +1,12 @@
+version: "3"
+services:
+  resume-ranking-server:
+    container_name: resume-ranking-server
+    build: .
+    ports:
+      - "3001:3000"
+    environment:
+      NODE_ENV: production
+    volumes:
+      - .:/usr/src/app
+    command: npm start

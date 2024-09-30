@@ -1,7 +1,15 @@
+import { Candidate } from '@/lib/types.alias'
 import React from 'react'
 
 interface Props {
     profile: Candidate
+}
+
+function parseDriveLink(link: string) {
+    // turn https://drive.google.com/open?id=1aQ9Ms-PTctWmZ45U7Yl_eqVRr1q1hhsn
+    // into https://drive.google.com/file/d/17SSFYZC9IN617Y11QeCgePpQcq1OmCl7/preview
+    const id = link.split('id=')[1]
+    return `https://drive.google.com/file/d/${id}/preview`
 }
 
 const Profile = ({ profile }: Props) => {
@@ -16,7 +24,7 @@ const Profile = ({ profile }: Props) => {
                         return (
                             <iframe
                                 key={key}
-                                src={value.answer}
+                                src={parseDriveLink(value.answer)}
                                 className="min-h-96 flex-1"
                                 allow="autoplay"
                             ></iframe>
