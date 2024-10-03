@@ -8,6 +8,7 @@ interface Props {}
 const Page = (props: Props) => {
     const [file, setFile] = useState<File | null>(null)
     const [uploadStatus, setUploadStatus] = useState<string | null>(null)
+    const [rankingGroup, setRankingGroup] = useState<string>('')
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
@@ -21,8 +22,20 @@ const Page = (props: Props) => {
             return
         }
 
+        if (!rankingGroup) {
+            setUploadStatus('Please select a ranking group.')
+            return
+        }
+
+        // rankingGroup can't have spaces
+        if (rankingGroup.includes(' ')) {
+            setUploadStatus('Ranking group cannot have spaces.')
+            return
+        }
+
         const formData = new FormData()
-        formData.append('csv', file)
+        formData.append('csv', file) // Append the file
+        formData.append('rankingGroup', rankingGroup) // Append the ranking group
 
         try {
             const response = await fetch('http://localhost:3001/upload', {
@@ -31,12 +44,12 @@ const Page = (props: Props) => {
             })
 
             if (response.ok) {
-                setUploadStatus('File uploaded successfully.')
+                setUploadStatus('File and category uploaded successfully.')
             } else {
-                setUploadStatus('File upload failed.')
+                setUploadStatus('Upload failed.')
             }
         } catch (error) {
-            setUploadStatus('Error uploading file.')
+            setUploadStatus('Error uploading file and category.')
             console.error('Upload error:', error)
         }
     }
@@ -44,6 +57,13 @@ const Page = (props: Props) => {
     return (
         <div className="flex h-screen w-full items-center justify-center gap-4 p-4">
             <div className="flex w-64 flex-col items-center justify-center gap-4 rounded-md bg-gray-200 p-4">
+                <input
+                    type="text"
+                    placeholder="Ranking Group"
+                    value={rankingGroup}
+                    onChange={(e) => setRankingGroup(e.target.value)}
+                    className="w-full rounded bg-gray-100 px-4 py-2 text-gray-800 outline-none"
+                />
                 <BsUpload className="text-6xl text-gray-400" />
                 {/* <span className="text-2xl font-bold">Upload</span> */}
                 <input

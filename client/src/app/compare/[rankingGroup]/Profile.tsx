@@ -3,6 +3,7 @@ import React from 'react'
 
 interface Props {
     profile: Candidate
+    prefix: string
 }
 
 function parseDriveLink(link: string) {
@@ -12,11 +13,14 @@ function parseDriveLink(link: string) {
     return `https://drive.google.com/file/d/${id}/preview`
 }
 
-const Profile = ({ profile }: Props) => {
+const Profile = ({ profile, prefix }: Props) => {
     return (
         <div className="flex h-full flex-1 flex-col bg-gray-100">
             <div className="border-b-2 border-b-gray-200 bg-gray-100 p-4 font-bold">
-                <h1 className="text-2xl">{profile.name}</h1>
+                <h1 className="text-2xl">
+                    {prefix}: {profile.name}
+                </h1>
+                <p className="text-sm text-gray-500">{profile.id}</p>
             </div>
             <div className="flex flex-1 flex-col gap-4 overflow-scroll p-4">
                 {Object.entries(profile.data).map(([key, value]) => {
