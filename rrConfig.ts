@@ -61,13 +61,13 @@ export const rrConfig = {
 			{
 				name: "socialGood",
 				question: "Who demonstrates a bigger drive for impact and social good?",
-				weight: 0.1,
+				weight: 0.3,
 			},
 			{
 				name: "technicalSkills",
 				question:
 					"Who is more technically skilled and better at problem solving?",
-				weight: 0.8,
+				weight: 0.6,
 			},
 			{
 				name: "preference",
@@ -79,13 +79,13 @@ export const rrConfig = {
 			{
 				name: "socialGood",
 				question: "Who demonstrates a bigger drive for impact and social good?",
-				weight: 0.1,
+				weight: 0.3,
 			},
 			{
 				name: "technicalSkills",
 				question:
 					"Who is more technically skilled and better at problem solving?",
-				weight: 0.8,
+				weight: 0.6,
 			},
 			{
 				name: "preference",
@@ -121,62 +121,62 @@ export const rrConfig = {
 			],
 		},
 		"devs-24": {
-			numRounds: 2,
+			numRounds: 5,
 			rounds: [
 				{
 					number: 0,
 					keepPercentage: 1,
-					numPivots: 5,
+					numPivots: 10,
 				},
 				{
 					number: 1,
 					keepPercentage: 0.85,
-					numPivots: 1,
+					numPivots: 8,
 				},
 				{
 					number: 2,
 					keepPercentage: 0.65,
-					numPivots: 5,
+					numPivots: 6,
 				},
 				{
 					number: 3,
 					keepPercentage: 0.45,
-					numPivots: 5,
+					numPivots: 4,
 				},
 				{
 					number: 4,
 					keepPercentage: 0.25,
-					numPivots: 5,
+					numPivots: 2,
 				},
 			],
 		},
 		"designers-24": {
-			numRounds: 2,
+			numRounds: 5,
 			rounds: [
 				{
 					number: 0,
 					keepPercentage: 1,
-					numPivots: 3,
+					numPivots: 10,
 				},
 				{
 					number: 1,
 					keepPercentage: 0.85,
-					numPivots: 3,
+					numPivots: 8,
 				},
 				{
 					number: 2,
 					keepPercentage: 0.65,
-					numPivots: 3,
+					numPivots: 6,
 				},
 				{
 					number: 3,
 					keepPercentage: 0.45,
-					numPivots: 3,
+					numPivots: 4,
 				},
 				{
 					number: 4,
 					keepPercentage: 0.25,
-					numPivots: 3,
+					numPivots: 2,
 				},
 			],
 		},
