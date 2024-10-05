@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import useSWR from 'swr'
 import Profile from './Profile'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuthToken } from '@/hooks/useAuthToken'
 import toast from 'react-hot-toast'
 import { RankingGroupNames } from '@/lib/rrConfig.alias'
@@ -28,9 +28,7 @@ const Page = () => {
         rankingGroup: RankingGroupNames
     } = useParams()
 
-    const [currentPivot, setCurrentPivot] = useState<string | undefined>(
-        undefined
-    )
+    const currentPivot = useRef<string | undefined>(undefined)
 
     const [submitting, setSubmitting] = useState(false)
     const [fetchingNext, setFetchingNext] = useState(false)
@@ -42,7 +40,7 @@ const Page = () => {
         mutate
     } = useSWR<Comparison>(
         [
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/comparison/?rankingGroup=${rankingGroup}${currentPivot ? `&lastPivot=${currentPivot}` : ''}`,
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/comparison/?rankingGroup=${rankingGroup}`,
             token,
             tokenLoading
         ],
@@ -58,7 +56,9 @@ const Page = () => {
                 return
             }
 
-            const response = await fetch(url, {
+            const finalUrl = `${url}${currentPivot.current ? `&lastPivot=${currentPivot.current}` : ''}`
+
+            const response = await fetch(finalUrl, {
                 headers: {
                     authorization: `Bearer ${token}`
                 }
@@ -87,7 +87,7 @@ const Page = () => {
 
     useEffect(() => {
         if (comparison) {
-            setCurrentPivot(comparison?.pivot)
+            currentPivot.current = comparison?.pivot
         }
     }, [comparison])
 
