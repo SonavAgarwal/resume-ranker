@@ -16,7 +16,7 @@ const Page = () => {
     } = useSWR<{
         rankingGroups: RankingGroup[]
     }>(
-        [`${process.env.NEXT_BACKEND_URL}/groups`, token, tokenLoading],
+        [`${process.env.NEXT_PUBLIC_BACKEND_URL}/groups`, token, tokenLoading],
         async ([url, token, tokenLoading]: [
             string,
             string | null,

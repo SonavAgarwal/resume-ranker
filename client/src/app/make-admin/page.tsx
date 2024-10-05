@@ -25,7 +25,7 @@ const Page = () => {
 
         try {
             const response = await fetch(
-                `${process.env.NEXT_BACKEND_URL}/makeAdmin?uid=${email}`,
+                `${process.env.NEXT_PUBLIC_BACKEND_URL}/makeAdmin?uid=${email}`,
                 {
                     method: 'POST',
                     headers: {

@@ -40,7 +40,7 @@ const Page = () => {
         mutate
     } = useSWR<Comparison>(
         [
-            `${process.env.NEXT_BACKEND_URL}/comparison/?rankingGroup=${rankingGroup}${currentPivot ? `&lastPivot=${currentPivot}` : ''}`,
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/comparison/?rankingGroup=${rankingGroup}${currentPivot ? `&lastPivot=${currentPivot}` : ''}`,
             token,
             tokenLoading
         ],
@@ -152,7 +152,7 @@ const Page = () => {
                         )
 
                         const response = await fetch(
-                            `${process.env.NEXT_BACKEND_URL}/rank`,
+                            `${process.env.NEXT_PUBLIC_BACKEND_URL}/rank`,
                             {
                                 method: 'POST',
                                 body: JSON.stringify({

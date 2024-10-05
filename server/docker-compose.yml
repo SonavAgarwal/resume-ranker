@@ -4,7 +4,7 @@ services:
     container_name: resume-ranking-server
     build: .
     ports:
-      - "3001:3000"
+      - "3001:3001"
     environment:
       NODE_ENV: production
     volumes:

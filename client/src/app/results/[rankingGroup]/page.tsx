@@ -13,7 +13,7 @@ const Page = () => {
         profiles: Candidate[]
     }>(
         [
-            `${process.env.NEXT_BACKEND_URL}/results/?rankingGroup=${rankingGroup}`,
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/results/?rankingGroup=${rankingGroup}`,
             token,
             tokenLoading
         ],

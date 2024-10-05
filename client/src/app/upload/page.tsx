@@ -45,7 +45,7 @@ const Page = () => {
 
         try {
             const response = await fetch(
-                `${process.env.NEXT_BACKEND_URL}/upload`,
+                `${process.env.NEXT_PUBLIC_BACKEND_URL}/upload`,
                 {
                     headers: {
                         Authorization: `Bearer ${token}`
