@@ -14,6 +14,8 @@ import {
 	getResults,
 	runCompleteComparison,
 	runGeneratePairings,
+	starCandidate,
+	unstarCandidate,
 	uploadProfiles,
 } from "./db";
 import { RankingGroupNames, rrConfig } from "./rrConfig.alias";
@@ -319,7 +321,7 @@ app.get("/results", async (req: express.Request, res: express.Response) => {
 
 // make admin endpoint
 app.post("/admin", async (req: express.Request, res: express.Response) => {
-	const { email } = req.body;
+	const email = req.query.email as string;
 
 	// make sure the user is god
 	if (!isGod((req as any).user.email)) {
@@ -330,4 +332,51 @@ app.post("/admin", async (req: express.Request, res: express.Response) => {
 	await makeAdmin(email);
 
 	res.send("User is now an admin");
+});
+
+// star endpoints
+app.post("/star", async (req: express.Request, res: express.Response) => {
+	const { candidateId, rankingGroup } = req.body;
+	const rankerId = (req as any).user.uid;
+
+	if (!candidateId || !rankingGroup) {
+		res
+			.status(400)
+			.json({ error: "Please provide a candidateId and rankingGroup" });
+		return;
+	}
+
+	try {
+		await starCandidate(rankingGroup, candidateId, rankerId);
+	} catch (error) {
+		console.log(error);
+		res.status(500).json({ error: "Something went wrong, sorry!" });
+	}
+
+	res.send({
+		error: null,
+	});
+});
+
+app.delete("/star", async (req: express.Request, res: express.Response) => {
+	const { candidateId, rankingGroup } = req.body;
+	const rankerId = (req as any).user.uid;
+
+	if (!candidateId || !rankingGroup) {
+		res
+			.status(400)
+			.json({ error: "Please provide a candidateId and rankingGroup" });
+		return;
+	}
+
+	try {
+		await unstarCandidate(rankingGroup, candidateId, rankerId);
+	} catch (error) {
+		console.log(error);
+		res.status(500).json({ error: "Something went wrong, sorry!" });
+	}
+
+	res.send({
+		error: null,
+	});
 });

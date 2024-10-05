@@ -541,3 +541,39 @@ export async function getResults(rankingGroup: RankingGroupNames) {
 
 	return { profiles: profiles.docs.map((doc) => doc.data() as Candidate) };
 }
+
+export async function starCandidate(
+	rankingGroup: RankingGroupNames,
+	candidateId: string,
+	userId: string
+) {
+	// get the profile
+	const profileRef = db
+		.collection("rankingGroups")
+		.doc(rankingGroup)
+		.collection("profiles")
+		.doc(candidateId);
+
+	// add userid to stars array
+	profileRef.update({
+		stars: admin.firestore.FieldValue.arrayUnion(userId),
+	});
+}
+
+export async function unstarCandidate(
+	rankingGroup: RankingGroupNames,
+	candidateId: string,
+	userId: string
+) {
+	// get the profile
+	const profileRef = db
+		.collection("rankingGroups")
+		.doc(rankingGroup)
+		.collection("profiles")
+		.doc(candidateId);
+
+	// remove userid from stars array
+	profileRef.update({
+		stars: admin.firestore.FieldValue.arrayRemove(userId),
+	});
+}
