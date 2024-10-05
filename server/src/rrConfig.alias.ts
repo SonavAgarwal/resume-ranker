@@ -156,27 +156,27 @@ export const rrConfig = {
 				{
 					number: 0,
 					keepPercentage: 1,
-					numPivots: 1,
+					numPivots: 3,
 				},
 				{
 					number: 1,
 					keepPercentage: 0.85,
-					numPivots: 1,
+					numPivots: 3,
 				},
 				{
 					number: 2,
 					keepPercentage: 0.65,
-					numPivots: 1,
+					numPivots: 3,
 				},
 				{
 					number: 3,
 					keepPercentage: 0.45,
-					numPivots: 1,
+					numPivots: 3,
 				},
 				{
 					number: 4,
 					keepPercentage: 0.25,
-					numPivots: 1,
+					numPivots: 3,
 				},
 			],
 		},
