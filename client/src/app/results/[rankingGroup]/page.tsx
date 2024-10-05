@@ -1,26 +1,19 @@
 'use client'
 
-import { Candidate, Comparison } from '@/lib/types.alias'
-import clsx from 'clsx'
-import { useParams } from 'next/navigation'
-import { useForm } from 'react-hook-form'
-import useSWR from 'swr'
-import Profile from './Profile'
-import { useEffect, useState } from 'react'
 import { useAuthToken } from '@/hooks/useAuthToken'
+import { Candidate } from '@/lib/types'
+import { useParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import ky from 'ky'
+import useSWR from 'swr'
 
-interface Props {}
-
-const Page = (props: Props) => {
+const Page = () => {
     const { rankingGroup } = useParams()
     const { token, tokenLoading } = useAuthToken()
-    const { data, isLoading, error, mutate } = useSWR<{
+    const { data, isLoading, error } = useSWR<{
         profiles: Candidate[]
     }>(
         [
-            `http://localhost:3001/results/?rankingGroup=${rankingGroup}`,
+            `${process.env.NEXT_BACKEND_URL}/results/?rankingGroup=${rankingGroup}`,
             token,
             tokenLoading
         ],
@@ -29,6 +22,8 @@ const Page = (props: Props) => {
             string | null,
             boolean
         ]) => {
+            if (tokenLoading) return { profiles: [] }
+
             if (!token) {
                 toast.error('Please login to view results.')
                 return

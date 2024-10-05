@@ -1,6 +1,6 @@
 'use client'
 
-import { Comparison } from '@/lib/types.alias'
+import { Comparison } from '@/lib/types'
 import clsx from 'clsx'
 import { useParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
@@ -11,9 +11,7 @@ import { useAuthToken } from '@/hooks/useAuthToken'
 import toast from 'react-hot-toast'
 import { RankingGroupNames } from '@/lib/rrConfig.alias'
 
-interface Props {}
-
-const Page = (props: Props) => {
+const Page = () => {
     const { token, tokenLoading } = useAuthToken()
 
     const {
@@ -42,7 +40,7 @@ const Page = (props: Props) => {
         mutate
     } = useSWR<Comparison>(
         [
-            `http://localhost:3001/comparison/?rankingGroup=${rankingGroup}${currentPivot ? `&lastPivot=${currentPivot}` : ''}`,
+            `${process.env.NEXT_BACKEND_URL}/comparison/?rankingGroup=${rankingGroup}${currentPivot ? `&lastPivot=${currentPivot}` : ''}`,
             token,
             tokenLoading
         ],
@@ -104,11 +102,11 @@ const Page = (props: Props) => {
             </div>
         )
 
-    // @ts-ignore
+    // @ts-expect-error - too lazy to fix this
     if (comparison.error)
         return (
             <div className="flex h-screen w-full flex-row items-center justify-center gap-4 p-4">
-                {/* @ts-ignore */}
+                {/* @ts-expect-error - too lazy to fix this */}
                 {comparison.error}
             </div>
         )
@@ -150,12 +148,11 @@ const Page = (props: Props) => {
                         } = {}
 
                         Object.entries(comparison.vectors).forEach(
-                            ([key, vector]) =>
-                                (winners[key] = data[`${key}-winner`])
+                            ([key]) => (winners[key] = data[`${key}-winner`])
                         )
 
                         const response = await fetch(
-                            'http://localhost:3001/rank',
+                            `${process.env.NEXT_BACKEND_URL}/rank`,
                             {
                                 method: 'POST',
                                 body: JSON.stringify({

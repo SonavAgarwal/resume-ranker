@@ -1,16 +1,12 @@
 'use client'
 
 import { useAuthToken } from '@/hooks/useAuthToken'
-import { RankingGroup } from '@/lib/types.alias'
+import { RankingGroup } from '@/lib/types'
 import Link from 'next/link'
-import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { BsUpload } from 'react-icons/bs'
 import useSWR from 'swr'
 
-interface Props {}
-
-const Page = (props: Props) => {
+const Page = () => {
     const { token, tokenLoading } = useAuthToken()
 
     const {
@@ -20,7 +16,7 @@ const Page = (props: Props) => {
     } = useSWR<{
         rankingGroups: RankingGroup[]
     }>(
-        ['http://localhost:3001/groups', token, tokenLoading],
+        [`${process.env.NEXT_BACKEND_URL}/groups`, token, tokenLoading],
         async ([url, token, tokenLoading]: [
             string,
             string | null,

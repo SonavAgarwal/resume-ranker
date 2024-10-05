@@ -5,9 +5,7 @@ import { rrConfig } from '@/lib/rrConfig.alias'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 
-interface Props {}
-
-const Page = (props: Props) => {
+const Page = () => {
     const [rankingGroup, setRankingGroup] = useState<string>('')
     const { token, tokenLoading } = useAuthToken()
 
@@ -29,7 +27,7 @@ const Page = (props: Props) => {
 
         try {
             const response = await fetch(
-                `http://localhost:3001/group?rankingGroup=${rankingGroup}`,
+                `${process.env.NEXT_BACKEND_URL}/group?rankingGroup=${rankingGroup}`,
                 {
                     method: 'DELETE',
                     headers: {
@@ -45,6 +43,7 @@ const Page = (props: Props) => {
             }
         } catch (error) {
             toast.error('An error occurred.')
+            console.error('Delete error:', error)
         }
     }
 

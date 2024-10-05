@@ -1,18 +1,15 @@
 'use client'
 
 import { useAuthToken } from '@/hooks/useAuthToken'
-import { RankingGroupNames, rrConfig } from '@/lib/rrConfig.alias'
+import { rrConfig } from '@/lib/rrConfig.alias'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { BsUpload } from 'react-icons/bs'
 
-interface Props {}
-
-const Page = (props: Props) => {
+const Page = () => {
     const [file, setFile] = useState<File | null>(null)
 
     const [rankingGroup, setRankingGroup] = useState<string>('')
-    const { token, tokenLoading } = useAuthToken()
+    const { token } = useAuthToken()
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
@@ -47,13 +44,16 @@ const Page = (props: Props) => {
         formData.append('rankingGroup', rankingGroup) // Append the ranking group
 
         try {
-            const response = await fetch('http://localhost:3001/upload', {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                },
-                method: 'POST',
-                body: formData
-            })
+            const response = await fetch(
+                `${process.env.NEXT_BACKEND_URL}/upload`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    },
+                    method: 'POST',
+                    body: formData
+                }
+            )
 
             if (response.ok) {
                 toast.success('File and category uploaded successfully.')

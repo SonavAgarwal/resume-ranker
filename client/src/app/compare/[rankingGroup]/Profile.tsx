@@ -1,6 +1,5 @@
 import { RankingGroupNames, rrConfig } from '@/lib/rrConfig.alias'
-import { Candidate } from '@/lib/types.alias'
-import React from 'react'
+import { Candidate } from '@/lib/types'
 import Linkify from 'react-linkify'
 
 interface Props {
@@ -51,7 +50,7 @@ const Profile = ({ profile, prefix, rankingGroup }: Props) => {
                         return (
                             <iframe
                                 key={key}
-                                src={parseDriveLink(value.answer)}
+                                src={parseDriveLink(value.answer as string)}
                                 className="min-h-96 flex-1"
                                 allow="autoplay"
                             ></iframe>

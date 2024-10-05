@@ -1,18 +1,12 @@
 'use client'
 
 import { auth } from '@/lib/firebase'
-import {
-    GoogleAuthProvider,
-    signInWithPopup,
-    signInWithRedirect
-} from 'firebase/auth'
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useAuthState } from 'react-firebase-hooks/auth'
 
-interface Props {}
-
-const Page = (props: Props) => {
+const Page = () => {
     const router = useRouter()
 
     const [user, loading, error] = useAuthState(auth)
@@ -30,7 +24,7 @@ const Page = (props: Props) => {
         if (user) {
             router.push('/groups')
         }
-    }, [user])
+    }, [user, router])
 
     if (loading) {
         return <div>Loading...</div>

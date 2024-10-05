@@ -1,10 +1,15 @@
-import exp from "constants";
-import * as admin from "firebase-admin";
+import {
+	initializeApp,
+	firestore,
+	auth as fbAuth,
+	credential,
+} from "firebase-admin";
 
 const serviceAccount = require("../credentials/firebase-credentials.json");
-admin.initializeApp({
-	credential: admin.credential.cert(serviceAccount),
+
+initializeApp({
+	credential: credential.cert(serviceAccount),
 });
 
-export const db = admin.firestore();
-export const auth = admin.auth();
+export const db = firestore();
+export const auth = fbAuth();

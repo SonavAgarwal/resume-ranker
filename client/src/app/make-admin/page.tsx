@@ -4,9 +4,7 @@ import { useAuthToken } from '@/hooks/useAuthToken'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 
-interface Props {}
-
-const Page = (props: Props) => {
+const Page = () => {
     const [email, setEmail] = useState<string>('')
     const { token, tokenLoading } = useAuthToken()
 
@@ -27,7 +25,7 @@ const Page = (props: Props) => {
 
         try {
             const response = await fetch(
-                `http://localhost:3001/makeAdmin?uid=${email}`,
+                `${process.env.NEXT_BACKEND_URL}/makeAdmin?uid=${email}`,
                 {
                     method: 'POST',
                     headers: {
@@ -42,6 +40,7 @@ const Page = (props: Props) => {
                 toast.error('Operation failed.')
             }
         } catch (error) {
+            console.error('Error making user admin:', error)
             toast.error('An error occurred.')
         }
     }
