@@ -28,7 +28,7 @@ const Page = () => {
             return
         }
 
-        if (!rankingGroup) {
+        if (!rankingGroup || rankingGroup === 'SELECT') {
             toast.error('Please select a ranking group.')
             return
         }
@@ -71,6 +71,7 @@ const Page = () => {
             <div className="w-94 flex flex-col items-center justify-center gap-4 rounded-md bg-gray-200 p-4">
                 <select
                     value={rankingGroup}
+                    defaultValue={'SELECT'}
                     onChange={(e) => setRankingGroup(e.target.value)}
                     className="w-full rounded bg-gray-100 px-4 py-2 text-gray-800 outline-none"
                 >

@@ -18,6 +18,7 @@ const Page = () => {
         register,
         handleSubmit,
         watch,
+        reset,
         formState: { errors }
     } = useForm()
 
@@ -31,6 +32,7 @@ const Page = () => {
         undefined
     )
 
+    const [submitting, setSubmitting] = useState(false)
     const [fetchingNext, setFetchingNext] = useState(false)
 
     const {
@@ -143,41 +145,58 @@ const Page = () => {
                             return
                         }
 
-                        const winners: {
-                            [key: string]: string
-                        } = {}
+                        setSubmitting(true)
 
-                        Object.entries(comparison.vectors).forEach(
-                            ([key]) => (winners[key] = data[`${key}-winner`])
-                        )
+                        try {
+                            const winners: {
+                                [key: string]: string
+                            } = {}
 
-                        const response = await fetch(
-                            `${process.env.NEXT_PUBLIC_BACKEND_URL}/rank`,
-                            {
-                                method: 'POST',
-                                body: JSON.stringify({
-                                    comparisonId: comparison.id,
-                                    winners: winners,
-                                    rankingGroup: rankingGroup
-                                }),
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    Authorization: `Bearer ${token}`
+                            Object.entries(comparison.vectors).forEach(
+                                ([key]) =>
+                                    (winners[key] = data[`${key}-winner`])
+                            )
+
+                            const response = await fetch(
+                                `${process.env.NEXT_PUBLIC_BACKEND_URL}/rank`,
+                                {
+                                    method: 'POST',
+                                    body: JSON.stringify({
+                                        comparisonId: comparison.id,
+                                        winners: winners,
+                                        rankingGroup: rankingGroup
+                                    }),
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        Authorization: `Bearer ${token}`
+                                    }
                                 }
-                            }
-                        )
+                            )
 
-                        if (response.ok) {
-                            setFetchingNext(true)
-                            try {
-                                await mutate()
-                            } catch (error) {
-                                console.error(
-                                    'Error fetching next comparison',
-                                    error
-                                )
+                            setSubmitting(false)
+
+                            // clear the form
+                            reset()
+
+                            if (response.ok) {
+                                setFetchingNext(true)
+                                try {
+                                    await mutate()
+                                } catch (error) {
+                                    console.error(
+                                        'Error fetching next comparison',
+                                        error
+                                    )
+                                }
+                                setFetchingNext(false)
                             }
+                        } catch (error) {
+                            setSubmitting(false)
                             setFetchingNext(false)
+
+                            console.error('Error saving comparison', error)
+                            toast.error('Error saving comparison')
+                            return
                         }
                     })}
                 >
@@ -253,7 +272,7 @@ const Page = () => {
                         className="rounded-md bg-blue-500 p-4 text-white"
                         type="submit"
                     >
-                        Finish
+                        {submitting ? 'Loading...' : 'Finish'}
                     </button>
                 </form>
             </div>
