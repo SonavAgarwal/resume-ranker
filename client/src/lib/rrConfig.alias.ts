@@ -115,6 +115,10 @@ export const rrConfig = {
                 'additionalInfo',
                 'resume'
             ]
+        },
+        numbers: {
+            questionOrder: ['Number 1', 'Number 2', 'Number 3'],
+            fieldOrder: []
         }
     },
 
