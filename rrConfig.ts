@@ -2,6 +2,43 @@ export type RankingGroupNames = "devs-24" | "designers-24" | "numbers";
 
 export const rrConfig = {
 	kFactor: 32,
+	settings: {
+		"devs-24": {
+			questionOrder: ["socialGood", "technicalSkills", "preference"],
+			fieldOrder: [
+				"pronouns",
+				"gradYear",
+				"majors",
+				"minors",
+				"whyNova",
+				"problem",
+				"community",
+				"links",
+				"additionalInfo",
+				"resume",
+			],
+		},
+		"designers-24": {
+			questionOrder: ["socialGood", "technicalSkills", "preference"],
+			fieldOrder: [
+				"pronouns",
+				"gradYear",
+				"majors",
+				"minors",
+				"whyNova",
+				"problem",
+				"community",
+				"links",
+				"additionalInfo",
+				"resume",
+			],
+		},
+		numbers: {
+			questionOrder: ["Number 1", "Number 2", "Number 3"],
+			fieldOrder: [],
+		},
+	},
+
 	vectors: {
 		numbers: [
 			{
@@ -22,35 +59,37 @@ export const rrConfig = {
 		],
 		"devs-24": [
 			{
-				name: "experience",
-				question: "Which candidate is more experienced?",
-				weight: 0.8,
-			},
-			{
-				name: "fit",
-				question: "Which candidate is a better fit for the team?",
+				name: "socialGood",
+				question: "Who demonstrates a bigger drive for impact and social good?",
 				weight: 0.1,
 			},
 			{
 				name: "technicalSkills",
-				question: "Which candidate has better technical skills?",
+				question:
+					"Who is more technically skilled and better at problem solving?",
+				weight: 0.8,
+			},
+			{
+				name: "preference",
+				question: "Who would you prefer to work with?",
 				weight: 0.1,
 			},
 		],
 		"designers-24": [
 			{
-				name: "experience",
-				question: "Which candidate is more experienced?",
-				weight: 0.8,
-			},
-			{
-				name: "fit",
-				question: "Which candidate is a better fit for the team?",
+				name: "socialGood",
+				question: "Who demonstrates a bigger drive for impact and social good?",
 				weight: 0.1,
 			},
 			{
-				name: "designSkills",
-				question: "Which candidate has better design skills?",
+				name: "technicalSkills",
+				question:
+					"Who is more technically skilled and better at problem solving?",
+				weight: 0.8,
+			},
+			{
+				name: "preference",
+				question: "Who would you prefer to work with?",
 				weight: 0.1,
 			},
 		],

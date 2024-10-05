@@ -7,16 +7,40 @@ import { useForm } from 'react-hook-form'
 import useSWR from 'swr'
 import Profile from './Profile'
 import { useEffect, useState } from 'react'
+import { useAuthToken } from '@/hooks/useAuthToken'
+import toast from 'react-hot-toast'
+import ky from 'ky'
 
 interface Props {}
 
 const Page = (props: Props) => {
     const { rankingGroup } = useParams()
+    const { token, tokenLoading } = useAuthToken()
     const { data, isLoading, error, mutate } = useSWR<{
         profiles: Candidate[]
     }>(
-        `http://localhost:3001/results/?rankingGroup=${rankingGroup}`,
-        (url: string) => fetch(url).then((res) => res.json()),
+        [
+            `http://localhost:3001/results/?rankingGroup=${rankingGroup}`,
+            token,
+            tokenLoading
+        ],
+        async ([url, token, tokenLoading]: [
+            string,
+            string | null,
+            boolean
+        ]) => {
+            if (!token) {
+                toast.error('Please login to view results.')
+                return
+            }
+
+            return fetch(url, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }).then((res) => res.json())
+        },
         {}
     )
 
@@ -29,7 +53,6 @@ const Page = (props: Props) => {
     if (error || !data?.profiles) return <div>Error loading profiles</div>
 
     const { profiles } = data
-    console.log(profiles)
 
     return (
         <div className="flex h-screen w-full flex-col items-center gap-4 p-4">

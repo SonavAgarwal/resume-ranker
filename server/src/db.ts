@@ -29,6 +29,10 @@ export interface RRMetadata {
 // 	}
 // }
 
+const GENERATION_DEBOUNCE = {
+	lastRunTime: 0,
+};
+
 export function uploadProfile(profile: Candidate) {
 	db.collection("profiles").doc(profile.id).set(profile);
 }
@@ -37,7 +41,6 @@ export async function uploadProfiles(
 	rankingGroup: RankingGroupNames,
 	profiles: Candidate[]
 ) {
-	console.log("uploadProfiles");
 	// open a transaction
 	const batch = db.batch();
 
@@ -73,7 +76,6 @@ export async function uploadProfiles(
 	};
 
 	batch.set(rankingGroupRef, docData, { merge: true });
-	console.log("ranking group ref set");
 
 	// insert the profiles into the database
 	profiles.forEach((profile) => {
@@ -84,7 +86,6 @@ export async function uploadProfiles(
 			.doc(profile.id);
 		batch.set(docRef, profile);
 	});
-	console.log("profiles set");
 
 	// commit the transaction
 	await batch.commit();
@@ -130,41 +131,19 @@ export async function getRankingGroups(): Promise<RankingGroup[]> {
 	return rankingGroups;
 }
 
-export async function advanceRound(rankingGroup: RankingGroupNames) {
-	// increment the current round
-	// const rankingGroupRef = db.collection("rankingGroups").doc(rankingGroup);
-	// await db.runTransaction(async (t) => {
-	// 	const rankingGroupDoc = await t.get(rankingGroupRef);
-	// 	const rankingGroupData = rankingGroupDoc.data() as RankingGroup;
+export async function advanceRound(
+	rankingGroup: RankingGroupNames,
+	firstRound: boolean = false
+) {
+	const currentTime = Date.now();
+	if (currentTime - GENERATION_DEBOUNCE.lastRunTime < 5000) {
+		return;
+	}
 
-	// 	if (!rankingGroupData) {
-	// 		throw new Error("Ranking group not found");
-	// 	}
-
-	// 	let currentRound = rankingGroupData.currentRound;
-
-	// 	// Check if we're past the last round
-	// 	if (currentRound >= rankingGroupData.rounds.length) {
-	// 		return false;
-	// 	}
-
-	// 	// Check if the current round is completed
-	// 	if (
-	// 		rankingGroupData.rounds[currentRound].status !== RoundStatus.COMPLETED
-	// 	) {
-	// 		return false;
-	// 	}
-
-	// 	// Increment the current round
-	// 	await t.update(rankingGroupRef, {
-	// 		currentRound: admin.firestore.FieldValue.increment(1),
-	// 	});
-
-	// 	return true;
-	// });
+	GENERATION_DEBOUNCE.lastRunTime = currentTime;
 
 	// start the next round
-	runGeneratePairings(rankingGroup);
+	runGeneratePairings(rankingGroup, !firstRound);
 }
 
 // advances the round and generates the pairings
@@ -172,101 +151,119 @@ export async function runGeneratePairings(
 	rankingGroup: RankingGroupNames,
 	advanceRound: boolean = true
 ) {
-	// open a transaction
+	try {
+		console.log("running generate pairings");
+		const transactionResult = await db.runTransaction(async (t) => {
+			// get the rankingGroup document
+			const rankingGroupRef = db.collection("rankingGroups").doc(rankingGroup);
+			const rankingGroupDoc = await t.get(rankingGroupRef);
+			const rankingGroupData = rankingGroupDoc.data() as RankingGroup;
 
-	console.log("runGeneratePairings");
+			console.log(rankingGroupData);
 
-	await db.runTransaction(async (t) => {
-		// get the rankingGroup document
-		const rankingGroupRef = db.collection("rankingGroups").doc(rankingGroup);
-		const rankingGroupDoc = await t.get(rankingGroupRef);
-		const rankingGroupData = rankingGroupDoc.data() as RankingGroup;
+			if (!rankingGroupData) {
+				console.log("ranking group not found");
+				throw new Error("Ranking group not found");
+			}
 
-		if (!rankingGroupData) {
-			throw new Error("Ranking group not found");
-		}
+			console.log("current round: ", rankingGroupData.currentRound);
 
-		console.log("A");
+			// check the round status
+			let currentRound = rankingGroupData.currentRound;
 
-		// check the round status
-		let currentRound = rankingGroupData.currentRound;
-
-		// check if we're past the last round
-		if (currentRound >= rankingGroupData.rounds.length) {
-			return;
-		}
-
-		if (advanceRound) {
-			// make sure the current round is completed
-			if (
-				rankingGroupData.rounds[currentRound].status !== RoundStatus.COMPLETED
-			) {
+			// check if we're past the last round
+			if (currentRound >= rankingGroupData.rounds.length) {
+				console.log("past last round");
 				return;
 			}
 
-			// increment the current round
-			rankingGroupData.currentRound++;
-			currentRound = rankingGroupData.currentRound;
-		}
+			if (advanceRound) {
+				// make sure the current round is in progress
+				if (
+					rankingGroupData.rounds[currentRound].status !==
+					RoundStatus.IN_PROGRESS
+				) {
+					console.log("round not in progress");
+					return;
+				}
 
-		// Make sure that the next round is not started
-		let roundStatus = rankingGroupData.rounds[currentRound].status;
-		if (roundStatus !== RoundStatus.NOT_STARTED) {
-			return;
-		}
+				// update the round status to COMPLETED
+				rankingGroupData.rounds[currentRound].status = RoundStatus.COMPLETED;
 
-		console.log("B");
+				// increment the current round
+				rankingGroupData.currentRound++;
+				currentRound = rankingGroupData.currentRound;
+			}
 
-		let numProfiles = rankingGroupData.numProfiles;
-		let currentKeepPercentage =
-			rankingGroupData.rounds[currentRound].keepPercentage;
-		let numProfilesToKeep = Math.floor(numProfiles * currentKeepPercentage);
+			// Make sure that the next round is not started
+			let nextRound = rankingGroupData?.rounds?.[currentRound];
+			if (!nextRound) {
+				console.log("no next round");
+				return;
+			}
+			let roundStatus = nextRound?.status;
+			if (roundStatus !== RoundStatus.NOT_STARTED) {
+				console.log("round already started");
+				return;
+			}
 
-		// get all the profiles ordered by their overall rating
-		const profiles = await db
-			.collection("rankingGroups")
-			.doc(rankingGroup)
-			.collection("profiles")
-			.orderBy("overallRating", "desc")
-			.limit(numProfilesToKeep);
+			let numProfiles = rankingGroupData.numProfiles;
+			let currentKeepPercentage =
+				rankingGroupData.rounds[currentRound].keepPercentage;
+			let numProfilesToKeep = Math.ceil(numProfiles * currentKeepPercentage);
 
-		// get the profiles
-		const profilesSnapshot = (await t.get(
-			profiles
-		)) as firestore.QuerySnapshot<Candidate>;
-		const profilesData = profilesSnapshot.docs.map(
-			(doc) => doc.data() as Candidate
-		);
+			// get all the profiles ordered by their overall rating
+			const profiles = await db
+				.collection("rankingGroups")
+				.doc(rankingGroup)
+				.collection("profiles")
+				.orderBy("overallRating", "desc")
+				.limit(numProfilesToKeep);
 
-		console.log("C");
+			// get the profiles
+			console.log("getting profiles");
+			const profilesSnapshot = (await t.get(
+				profiles
+			)) as firestore.QuerySnapshot<Candidate>;
+			const profilesData = profilesSnapshot.docs.map(
+				(doc) => doc.data() as Candidate
+			);
 
-		let currentRoundObj = rankingGroupData.rounds[currentRound];
+			let currentRoundObj = rankingGroupData.rounds[currentRound];
 
-		// create the pairings
-		const pairings = generatePairings(
-			rankingGroup,
-			profilesData,
-			currentRoundObj
-		);
+			// create the pairings
+			console.log("generating pairings");
+			const pairings = generatePairings(
+				rankingGroup,
+				profilesData,
+				currentRoundObj
+			);
 
-		// write the pairings to the database
-		const pairingsRef = db
-			.collection("rankingGroups")
-			.doc(rankingGroup)
-			.collection("rounds")
-			.doc(currentRound.toString())
-			.collection("pairings");
+			// write the pairings to the database
+			console.log("writing pairings to db");
+			const pairingsRef = db
+				.collection("rankingGroups")
+				.doc(rankingGroup)
+				.collection("rounds")
+				.doc(currentRound.toString())
+				.collection("pairings");
 
-		pairings.forEach((pairing) => {
-			t.set(pairingsRef.doc(pairing.id), pairing);
+			console.log(pairings);
+			pairings.forEach((pairing) => {
+				t.set(pairingsRef.doc(pairing.id), pairing);
+			});
+
+			console.log("updating ranking group");
+			// update the round status to IN_PROGRESS
+			currentRoundObj.status = RoundStatus.IN_PROGRESS;
+			t.set(rankingGroupRef, rankingGroupData);
+
+			console.log("done");
 		});
-
-		console.log("D");
-
-		// update the round status to IN_PROGRESS
-		currentRoundObj.status = RoundStatus.IN_PROGRESS;
-		t.set(rankingGroupRef, rankingGroupData);
-	});
+		console.log("transaction result: ", transactionResult);
+	} catch (error) {
+		console.error("Error generating pairings", error);
+	}
 }
 
 export async function getNextComparisonMeta(
@@ -280,7 +277,6 @@ export async function getNextComparisonMeta(
 		const rankingGroupRef = db.collection("rankingGroups").doc(rankingGroup);
 		const rankingGroupDoc = await t.get(rankingGroupRef);
 		const rankingGroupData = rankingGroupDoc.data() as RankingGroup;
-		// console.log(rankingGroupData);
 
 		if (!rankingGroupData) {
 			return "RANKING_GROUP_NOT_FOUND";
@@ -542,11 +538,6 @@ export async function getResults(rankingGroup: RankingGroupNames) {
 		.collection("profiles")
 		.orderBy("overallRating", "desc")
 		.get();
-
-	// print all the ids
-	profiles.forEach((doc) => {
-		console.log(doc.id);
-	});
 
 	return { profiles: profiles.docs.map((doc) => doc.data() as Candidate) };
 }

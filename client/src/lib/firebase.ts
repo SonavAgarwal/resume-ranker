@@ -17,9 +17,3 @@ const app = initializeApp(firebaseConfig)
 
 // get auth
 export const auth = getAuth(app)
-
-onAuthStateChanged(auth, (user) => {
-    console.log('oasc User:', user)
-    // if (user) {
-    // }
-})

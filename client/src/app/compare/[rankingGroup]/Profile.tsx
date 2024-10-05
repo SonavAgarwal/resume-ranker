@@ -1,9 +1,12 @@
+import { RankingGroupNames, rrConfig } from '@/lib/rrConfig.alias'
 import { Candidate } from '@/lib/types.alias'
 import React from 'react'
+import Linkify from 'react-linkify'
 
 interface Props {
     profile: Candidate
     prefix: string
+    rankingGroup: RankingGroupNames
 }
 
 function parseDriveLink(link: string) {
@@ -13,7 +16,23 @@ function parseDriveLink(link: string) {
     return `https://drive.google.com/file/d/${id}/preview`
 }
 
-const Profile = ({ profile, prefix }: Props) => {
+const Profile = ({ profile, prefix, rankingGroup }: Props) => {
+    const fieldOrder = rrConfig.settings[rankingGroup].fieldOrder
+    const fieldIndex: Record<string, number> = fieldOrder.reduce(
+        (acc, field, i) => ({ ...acc, [field]: i }),
+        {}
+    )
+    console.log(fieldIndex)
+
+    function getFieldIndex(field: string) {
+        const index = fieldIndex[field]
+        return index === undefined ? 100000 : index
+    }
+
+    const fields = Object.keys(profile.data).sort(
+        (a: string, b: string) => getFieldIndex(a) - getFieldIndex(b)
+    )
+
     return (
         <div className="flex h-full flex-1 flex-col bg-gray-100">
             <div className="border-b-2 border-b-gray-200 bg-gray-100 p-4 font-bold">
@@ -23,7 +42,11 @@ const Profile = ({ profile, prefix }: Props) => {
                 <p className="text-sm text-gray-500">{profile.id}</p>
             </div>
             <div className="flex flex-1 flex-col gap-4 overflow-scroll p-4">
-                {Object.entries(profile.data).map(([key, value]) => {
+                {fields.map((key) => {
+                    const value = profile.data[key]
+
+                    if (!value.show) return null
+
                     if (value.question === 'pdf') {
                         return (
                             <iframe
@@ -34,6 +57,7 @@ const Profile = ({ profile, prefix }: Props) => {
                             ></iframe>
                         )
                     }
+                    if (!value.answer) return null
                     return (
                         <div key={key}>
                             <h2 className="text-xl font-bold">
@@ -44,7 +68,24 @@ const Profile = ({ profile, prefix }: Props) => {
                                 ['string', 'number', 'boolean'].includes(
                                     typeof value.answer
                                 ) ? (
-                                    <p>{value.answer}</p>
+                                    <Linkify
+                                        componentDecorator={(
+                                            decoratedHref,
+                                            decoratedText,
+                                            key
+                                        ) => (
+                                            <a
+                                                target="_blank"
+                                                href={decoratedHref}
+                                                key={key}
+                                                className="text-blue-500 hover:underline"
+                                            >
+                                                {decoratedText}
+                                            </a>
+                                        )}
+                                    >
+                                        {value.answer}
+                                    </Linkify>
                                 ) : // if the answer is an array, display it as a list
                                 Array.isArray(value.answer) ? (
                                     <ul>
@@ -53,7 +94,8 @@ const Profile = ({ profile, prefix }: Props) => {
                                                 key={answer}
                                                 className="ml-4 list-disc"
                                             >
-                                                {answer}
+                                                <Linkify>{answer}</Linkify>
+                                                {/* {answer} */}
                                             </li>
                                         ))}
                                     </ul>

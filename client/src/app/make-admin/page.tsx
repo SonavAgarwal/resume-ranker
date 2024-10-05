@@ -1,29 +1,48 @@
 'use client'
 
+import { useAuthToken } from '@/hooks/useAuthToken'
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 
 interface Props {}
 
 const Page = (props: Props) => {
-    const [uid, setUid] = useState<string>('')
-    const [uploadStatus, setUploadStatus] = useState<string | null>(null)
+    const [email, setEmail] = useState<string>('')
+    const { token, tokenLoading } = useAuthToken()
 
     const handleClick = async () => {
+        if (tokenLoading) {
+            return
+        }
+
+        if (!token) {
+            toast.error('You are not logged in!')
+            return
+        }
+
+        if (!email) {
+            toast.error('Please enter an email.')
+            return
+        }
+
         try {
             const response = await fetch(
-                `http://localhost:3001/makeAdmin?uid=${uid}`,
+                `http://localhost:3001/makeAdmin?uid=${email}`,
                 {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: {
+                        authorization: `Bearer ${token}`
+                    }
                 }
             )
 
             if (response.ok) {
-                setUploadStatus('User successfully made admin.')
+                toast.success('User successfully made admin.')
             } else {
-                setUploadStatus('Operation failed.')
+                toast.error('Operation failed.')
             }
         } catch (error) {
-            setUploadStatus('An error occurred.')
+            toast.error('An error occurred.')
         }
     }
 
@@ -32,9 +51,9 @@ const Page = (props: Props) => {
             <div className="flex w-64 flex-col items-center justify-center gap-4 rounded-md bg-gray-200 p-4">
                 <input
                     type="text"
-                    placeholder="User ID"
-                    value={uid}
-                    onChange={(e) => setUid(e.target.value)}
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="w-full rounded bg-gray-100 px-4 py-2 text-gray-800 outline-none"
                 />
                 <button
@@ -43,17 +62,6 @@ const Page = (props: Props) => {
                 >
                     Submit
                 </button>
-                {uploadStatus && (
-                    <p
-                        className={
-                            uploadStatus === 'User successfully made admin.'
-                                ? 'text-green-600'
-                                : 'text-red-600'
-                        }
-                    >
-                        {uploadStatus}
-                    </p>
-                )}
             </div>
         </div>
     )

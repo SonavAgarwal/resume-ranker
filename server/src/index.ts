@@ -27,12 +27,6 @@ import {
 dotenv.config();
 
 // ====================
-// CONNECT TO DATABASE
-// ====================
-
-// connectToDB();
-
-// ====================
 // START THE SERVER
 // ====================
 
@@ -50,14 +44,22 @@ app.use((req, res, next) => {
 	res.header("Access-Control-Allow-Origin", "*"); // TODO: Change this to the frontend URL
 	res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
 	res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-	next();
+
+	if (req.method === "OPTIONS") {
+		return res.status(200).end();
+	}
+
+	return next();
 });
 
 app.listen(PORT, "0.0.0.0", () => {
 	console.log(`Server is running at http://localhost:${PORT}`);
 });
 
-// check auth header
+// ====================
+// MIDDLEWARE
+// ====================
+
 app.use(async (req, res, next) => {
 	if (!req.headers.authorization) {
 		res.status(401).json({ error: "Unauthorized" });
@@ -84,7 +86,7 @@ app.use(async (req, res, next) => {
 			return;
 		}
 
-		(req as any).user = decodedToken.uid;
+		(req as any).user = decodedToken;
 
 		next();
 	} catch (error) {
@@ -93,25 +95,31 @@ app.use(async (req, res, next) => {
 	}
 });
 
+// ====================
+// ROUTES
+// ====================
+
 app.get("/", (req: express.Request, res: express.Response) => {
 	res.send("Hey, it's Nova's resume ranking server!");
 });
 
 app.get("/groups", async (req: express.Request, res: express.Response) => {
-	// get all the ranking groups
-	// res.send(response);
-
-	const rankingGroups = await getRankingGroups();
-	res.send({
-		rankingGroups,
-	});
+	try {
+		const rankingGroups = await getRankingGroups();
+		res.send({
+			rankingGroups,
+		});
+	} catch (error) {
+		console.log(error);
+		res.status(500).json({ error: "Something went wrong, sorry!" });
+	}
 });
 
 app.get("/comparison", async (req: express.Request, res: express.Response) => {
 	const rankingGroup = req.query.rankingGroup as RankingGroupNames;
 	const lastPivot = req.query.lastPivot as string;
 
-	const rankerId = (req as any).user;
+	const rankerId = (req as any).user.uid;
 
 	if (!rankingGroup) {
 		res.status(400).json({ error: "Please provide a ranking group" });
@@ -123,44 +131,43 @@ app.get("/comparison", async (req: express.Request, res: express.Response) => {
 		return;
 	}
 
-	console.log("getting comparison", rankingGroup, lastPivot);
 	const comparison: UnfilledComparison | string = await getNextComparisonMeta(
 		rankingGroup,
 		rankerId,
 		lastPivot
 	);
-	console.log("comparison", comparison);
 
 	if (typeof comparison === "string") {
 		if (comparison === "ROUND_NOT_IN_PROGRESS") {
 			res.status(400).json({ error: "Round not in progress" });
-			return;
+
+			// start a new round
+			runGeneratePairings(rankingGroup, false);
 		}
 		if (comparison === "RANKING_GROUP_NOT_FOUND") {
 			res.status(400).json({ error: "Ranking group not found" });
 			return;
 		}
 		if (comparison === "NO_UNGRADED_COMPARISONS") {
-			res.status(400).json({ error: "No ungraded comparisons" });
+			res.status(202).json({
+				error: "No ungraded comparisons. Check back in a bit.",
+			});
 
 			// start a new round
 			advanceRound(rankingGroup);
 		}
 	} else {
-		console.log("getting profiles");
 		// fill the comparison with the actual profiles
 		let candidateIds = Object.keys(comparison.candidates);
 		const profiles = await getProfiles(rankingGroup, candidateIds);
 
 		comparison.candidates = profiles;
-		console.log("filled profiles", profiles);
+
 		res.send(comparison);
 	}
 });
 
 app.post("/rank", async (req: express.Request, res: express.Response) => {
-	console.log(req.body);
-
 	const {
 		comparisonId,
 		winners,
@@ -183,24 +190,17 @@ app.post("/rank", async (req: express.Request, res: express.Response) => {
 	});
 });
 
-// // upload a profile
-// app.post("/profile", async (req: express.Request, res: express.Response) => {
-// 	console.log(req.body);
-
-// 	const payload: {
-// 		profile: Candidate;
-// 	} = req.body;
-
-// 	// add the profile to the database
-
-// 	// res.send(response);
-// });
-
-// Upload a CSV of profiles
 app.post(
 	"/upload",
 	upload.single("csv"),
 	async (req: express.Request, res: express.Response) => {
+		// require god
+		console.log("req.user", (req as any).user);
+		if (!isGod((req as any).user.email)) {
+			res.status(401).json({ error: "Unauthorized. You must be god." });
+			return;
+		}
+
 		const csvData = req.file;
 		const rankingGroup = req.body.rankingGroup as RankingGroupNames;
 		// Check if the file was uploaded
@@ -209,14 +209,10 @@ app.post(
 			return;
 		}
 
-		// print the file name
-		console.log(csvData.originalname);
-
 		try {
 			// Get the uploaded file
 			const csvData = req.file?.buffer;
 			if (!csvData) {
-				console.log("No file uploaded");
 				res.status(400).json({ error: "Please upload a file" });
 				return;
 			}
@@ -243,7 +239,6 @@ app.post(
 
 			// The first row is the headers
 			const headerRow = records[0];
-			console.log(headerRow);
 
 			// Parse the headers
 			const headers = headerRow.map((cell: string) => parseHeaderCell(cell));
@@ -286,13 +281,11 @@ app.post(
 				candidates.push(candidate);
 			}
 
-			console.log("number of candidates", candidates.length);
-
 			await uploadProfiles(rankingGroup, candidates);
 
-			await runGeneratePairings(rankingGroup, false);
-
 			res.status(200).json({ candidates });
+
+			await advanceRound(rankingGroup, true);
 		} catch (error) {
 			console.log(error);
 			res.status(500).json({ error: "Something went wrong, sorry!" });
@@ -302,9 +295,13 @@ app.post(
 
 // delete a ranking group
 app.delete("/group", async (req: express.Request, res: express.Response) => {
-	const rankingGroup = req.query.rankingGroup as RankingGroupNames;
+	if (!isGod((req as any).user.email)) {
+		console.log("not god", (req as any).user);
+		res.status(401).json({ error: "Unauthorized. You must be god." });
+		return;
+	}
 
-	console.log(rankingGroup);
+	const rankingGroup = req.query.rankingGroup as RankingGroupNames;
 
 	await deleteRankingGroup(rankingGroup);
 
@@ -322,15 +319,15 @@ app.get("/results", async (req: express.Request, res: express.Response) => {
 
 // make admin endpoint
 app.post("/admin", async (req: express.Request, res: express.Response) => {
-	const { uid } = req.body;
+	const { email } = req.body;
 
 	// make sure the user is god
-	if (!isGod((req as any).user)) {
+	if (!isGod((req as any).user.email)) {
 		res.status(401).json({ error: "Unauthorized. You must be god." });
 		return;
 	}
 
-	await makeAdmin(uid);
+	await makeAdmin(email);
 
 	res.send("User is now an admin");
 });

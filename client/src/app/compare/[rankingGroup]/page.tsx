@@ -7,17 +7,27 @@ import { useForm } from 'react-hook-form'
 import useSWR from 'swr'
 import Profile from './Profile'
 import { useEffect, useState } from 'react'
+import { useAuthToken } from '@/hooks/useAuthToken'
+import toast from 'react-hot-toast'
+import { RankingGroupNames } from '@/lib/rrConfig.alias'
 
 interface Props {}
 
 const Page = (props: Props) => {
+    const { token, tokenLoading } = useAuthToken()
+
     const {
         register,
         handleSubmit,
         watch,
         formState: { errors }
     } = useForm()
-    const { rankingGroup } = useParams()
+
+    const {
+        rankingGroup
+    }: {
+        rankingGroup: RankingGroupNames
+    } = useParams()
 
     const [currentPivot, setCurrentPivot] = useState<string | undefined>(
         undefined
@@ -31,8 +41,47 @@ const Page = (props: Props) => {
         error,
         mutate
     } = useSWR<Comparison>(
-        `http://localhost:3001/comparison/?rankingGroup=${rankingGroup}${currentPivot ? `&lastPivot=${currentPivot}` : ''}`,
-        (url: string) => fetch(url).then((res) => res.json()),
+        [
+            `http://localhost:3001/comparison/?rankingGroup=${rankingGroup}${currentPivot ? `&lastPivot=${currentPivot}` : ''}`,
+            token,
+            tokenLoading
+        ],
+        async ([url, token, tokenLoading]: [
+            string,
+            string | null,
+            boolean
+        ]) => {
+            if (tokenLoading) return
+
+            if (!token) {
+                toast.error('You are not logged in!')
+                return
+            }
+
+            const response = await fetch(url, {
+                headers: {
+                    authorization: `Bearer ${token}`
+                }
+            })
+
+            // Check if the response is OK (status in the range 200-299)
+            if (!response.ok) {
+                const error = await response.json()
+                const errorMessage = error.error || 'Something went wrong'
+                // toast.error(errorMessage) // Optionally show an error toast
+                throw new Error(errorMessage) // Throwing the error to pass it to SWR's error object
+            }
+
+            // if is 202, retry in 10 seconds
+            if (response.status === 202) {
+                setTimeout(() => {
+                    mutate()
+                }, 10000)
+                return await response.json()
+            }
+
+            return response.json()
+        },
         {}
     )
 
@@ -42,16 +91,27 @@ const Page = (props: Props) => {
         }
     }, [comparison])
 
-    if (isLoading || fetchingNext)
+    if (isLoading || fetchingNext || tokenLoading)
         return (
             <div className="flex h-screen w-full flex-row items-center justify-center gap-4 p-4">
                 Loading...
             </div>
         )
-    if (error || !comparison) return <div>Error loading comparison</div>
+    if (error || !comparison)
+        return (
+            <div className="flex h-screen w-full flex-row items-center justify-center gap-4 p-4">
+                {error ? error.message : 'Error loading comparison'}
+            </div>
+        )
 
     // @ts-ignore
-    if (comparison.error) return <div>{comparison.error}</div>
+    if (comparison.error)
+        return (
+            <div className="flex h-screen w-full flex-row items-center justify-center gap-4 p-4">
+                {/* @ts-ignore */}
+                {comparison.error}
+            </div>
+        )
 
     const c1Id = comparison.pivot
     const c2Id = comparison?.candidates
@@ -62,8 +122,16 @@ const Page = (props: Props) => {
 
     return (
         <div className="flex h-screen w-full flex-row items-center justify-center gap-4 p-4">
-            <Profile profile={comparison.candidates[c1Id]} prefix="A" />
-            <Profile profile={comparison.candidates[c2Id]} prefix="B" />
+            <Profile
+                profile={comparison.candidates[c1Id]}
+                prefix="A"
+                rankingGroup={rankingGroup}
+            />
+            <Profile
+                profile={comparison.candidates[c2Id]}
+                prefix="B"
+                rankingGroup={rankingGroup}
+            />
             <div className="flex h-full w-72 flex-col bg-gray-100">
                 <div className="border-b-2 border-b-gray-200 bg-gray-100 p-4 font-bold">
                     <h1 className="text-2xl font-bold">Comparison</h1>
@@ -71,10 +139,11 @@ const Page = (props: Props) => {
                 <form
                     className="flex flex-col gap-4 p-4"
                     onSubmit={handleSubmit(async (data) => {
-                        // send request to server
-                        // /rank?comparisonId=comparison.id&winnerId=winnerId
-
-                        console.log(data)
+                        if (tokenLoading) return
+                        if (!token) {
+                            toast.error('You are not logged in!')
+                            return
+                        }
 
                         const winners: {
                             [key: string]: string
@@ -95,13 +164,13 @@ const Page = (props: Props) => {
                                     rankingGroup: rankingGroup
                                 }),
                                 headers: {
-                                    'Content-Type': 'application/json'
+                                    'Content-Type': 'application/json',
+                                    Authorization: `Bearer ${token}`
                                 }
                             }
                         )
 
                         if (response.ok) {
-                            console.log('Comparison saved')
                             setFetchingNext(true)
                             try {
                                 await mutate()

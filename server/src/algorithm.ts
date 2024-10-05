@@ -1,65 +1,5 @@
 import { RankingGroupNames, rrConfig } from "./rrConfig.alias";
-import { getProfile } from "./db";
-import {
-	Candidate,
-	Comparison,
-	ComparisonVector,
-	RankingGroup,
-	Round,
-	RoundStatus,
-	UnfilledComparison,
-} from "./types";
-import { firestore } from "firebase-admin";
-
-// export async function getNextComparison(
-// 	rankingGroup: RankingGroupNames,
-// 	rankerId: string
-// ): Promise<Comparison> {
-
-//     // query the database and get two profiles to compare
-
-// 	// // query the database and get two profiles to compare
-// 	// // return the two profiles
-
-// 	// console.log("getNextComparison");
-
-// 	// const profile1 = await getProfile(
-// 	// 	rankingGroup,
-// 	// 	"0baf4f4d-2a00-4ceb-9f08-ad23dafe8ffb"
-// 	// );
-// 	// const profile2 = await getProfile(
-// 	// 	rankingGroup,
-// 	// 	"2a542b1c-af8b-4563-9293-364b1ee1f86b"
-// 	// );
-
-// 	// // console.log(profile1);
-// 	// // console.log(profile2);
-
-// 	// const vectors: {
-// 	// 	[key: string]: ComparisonVector;
-// 	// } = {};
-// 	// rrConfig.vectors[rankingGroup].forEach((vector) => {
-// 	// 	vectors[vector.name] = {
-// 	// 		name: vector.name,
-// 	// 		question: vector.question,
-// 	// 	};
-// 	// });
-
-// 	// console.log(vectors);
-
-// 	// const comparison: Comparison = {
-// 	// 	id: "1",
-// 	// 	candidates: {
-// 	// 		[profile1.id]: profile1,
-// 	// 		[profile2.id]: profile2,
-// 	// 	},
-// 	// 	vectors,
-// 	// };
-
-// 	// console.log(comparison);
-
-// 	// return comparison;
-// }
+import { Candidate, Comparison, Round, UnfilledComparison } from "./types";
 
 export function calculateNewELOs(
 	comparison: Comparison,
@@ -167,12 +107,6 @@ export function generatePairings(
 	candidates: Candidate[],
 	round: Round
 ): UnfilledComparison[] {
-	// print generatePairings
-	console.log("generatePairings");
-
-	// print the candidate ids
-	console.log(candidates.map((c) => c.id));
-
 	let numCandidates = candidates.length;
 
 	// pick the pivots (numPivots)
@@ -186,34 +120,36 @@ export function generatePairings(
 	let pivotIndices = new Set<number>();
 	let midLowBound = Math.floor(numCandidates / 2) - Math.floor(numPivots / 2);
 	let midHighBound = Math.floor(numCandidates / 2) + Math.floor(numPivots / 2);
+	midHighBound = Math.max(midHighBound, midLowBound + numPivots);
 	for (let i = midLowBound; i < midHighBound; i++) {
 		pivotIndices.add(i);
 	}
 
-	// print the pivot indices and the pivot ids
-	console.log(pivotIndices);
-	console.log(Array.from(pivotIndices).map((i) => candidates[i].id));
+	const pivotIndicesArray = Array.from(pivotIndices);
 
 	// for each candidate that's not in the pivots, generate a comparison with one of the pivots
-	// pick the pivot using index % numPivots
 	let comparisons: UnfilledComparison[] = [];
 	for (let i = 0; i < numCandidates; i++) {
 		if (pivotIndices.has(i)) {
 			continue;
 		}
 
-		let pivotIndex = Array.from(pivotIndices)[i % numPivots];
+		let pivotIndex = pivotIndicesArray[i % numPivots];
+
 		let pivot = candidates[pivotIndex];
 		let candidate = candidates[i];
 
+		const candidateID = candidate.id;
+		const pivotID = pivot.id;
+
 		let comparison: UnfilledComparison = {
-			id: `c-${pivot.id}-${candidate.id}`,
-			pivot: pivot.id,
+			id: `c-${pivotID}-${candidateID}`,
+			pivot: pivotID,
 			grader: null,
 			graded: false,
 			candidates: {
-				[pivot.id]: {},
-				[candidate.id]: {},
+				[pivotID]: {},
+				[candidateID]: {},
 			},
 			vectors: {},
 		};

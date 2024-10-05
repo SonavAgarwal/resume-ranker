@@ -17,8 +17,6 @@ const Page = (props: Props) => {
 
     const [user, loading, error] = useAuthState(auth)
 
-    console.log('Loading:', loading, '|', 'Current user:', user)
-
     async function signInWithGoogle() {
         const provider = new GoogleAuthProvider()
         try {
@@ -30,7 +28,6 @@ const Page = (props: Props) => {
 
     useEffect(() => {
         if (user) {
-            console.log('User:', user)
             router.push('/groups')
         }
     }, [user])
@@ -42,8 +39,6 @@ const Page = (props: Props) => {
     if (error) {
         return <div>Error: {error.message}</div>
     }
-
-    console.log('User:', user)
 
     return (
         <div className="flex h-screen w-full items-center justify-center gap-4 p-4">

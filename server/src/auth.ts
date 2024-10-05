@@ -21,11 +21,12 @@ export async function isAdmin(uid: string): Promise<boolean> {
 	return !!user.customClaims?.admin;
 }
 
-export async function makeAdmin(uid: string): Promise<void> {
+export async function makeAdmin(email: string): Promise<void> {
+	const user = await auth.getUserByEmail(email);
+	const uid = user.uid;
 	await auth.setCustomUserClaims(uid, { admin: true });
 }
 
 export function isGod(email: string): boolean {
-	// env variable god email
 	return email.toLowerCase() === process.env.GOD_EMAIL;
 }
