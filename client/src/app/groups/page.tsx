@@ -42,23 +42,41 @@ const Page = () => {
         {}
     )
 
-    if (isLoading) return <div>Loading...</div>
+    if (isLoading)
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+                Loading...
+            </div>
+        )
     if (error || !comparison) return <div>Error loading groups</div>
 
     return (
         <div className="flex h-screen w-full flex-col gap-4 p-4">
-            <h1 className="text-2xl font-semibold">Resume Groups</h1>
+            <h1 className="text-md">Comparison Groups</h1>
 
             <div className="grid h-auto w-full grid-cols-2 gap-4 md:grid-cols-4">
                 {comparison.rankingGroups.map((group: RankingGroup) => (
-                    <Link
-                        href={`/compare/${group.name}`}
+                    <div
                         key={group.name}
                         className="flex-col items-center justify-center gap-4 rounded-md bg-gray-200 p-4"
                     >
                         <h1 className="text-xl font-bold">{group.name}</h1>
                         <p>{group.numProfiles} profiles</p>
-                    </Link>
+                        <div className="mt-2 flex flex-row gap-4">
+                            <Link
+                                href={`/compare/${group.name}`}
+                                className="text-blue-500 hover:underline"
+                            >
+                                Grade
+                            </Link>
+                            <Link
+                                href={`/results/${group.name}`}
+                                className="text-blue-500 hover:underline"
+                            >
+                                View Results
+                            </Link>
+                        </div>
+                    </div>
                 ))}
             </div>
         </div>
