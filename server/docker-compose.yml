@@ -1,4 +1,3 @@
-version: "3"
 services:
   resume-ranking-server:
     container_name: resume-ranking-server

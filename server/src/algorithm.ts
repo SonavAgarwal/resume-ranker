@@ -1,9 +1,15 @@
 import { RankingGroupNames, rrConfig } from "./rrConfig.alias";
 import { Candidate, Comparison, Round, UnfilledComparison } from "./types";
 
+interface EloOptions {
+	pivotId?: string;
+	pivotMatchCount?: number;
+}
+
 export function calculateNewELOs(
 	comparison: Comparison,
-	winners: Record<string, string>
+	winners: Record<string, string>,
+	options: EloOptions = {}
 ) {
 	let candidateIds = Object.keys(comparison.candidates);
 	let c1 = comparison.candidates[candidateIds[0]];
@@ -13,6 +19,16 @@ export function calculateNewELOs(
 	// return the new ELOs
 
 	let vectors = Object.keys(comparison.vectors);
+
+	const pivotId = options.pivotId;
+	const pivotMatchCount = Math.max(1, options.pivotMatchCount || 1);
+
+	const adjustKForPivot = (candidateId: string, baseK: number) => {
+		if (!pivotId || candidateId !== pivotId) {
+			return baseK;
+		}
+		return baseK / Math.sqrt(pivotMatchCount);
+	};
 
 	for (let i = 0; i < vectors.length; i++) {
 		let vector = vectors[i];
@@ -25,46 +41,47 @@ export function calculateNewELOs(
 		let c2Rating = c2.ratings[vector].rating;
 
 		let expectedScore = getExpectedScore(c1Rating, c2Rating);
-		let kFactor = getKFactor(c1Rating);
+		let c1KFactor = adjustKForPivot(c1.id, getKFactor(c1Rating));
+		let c2KFactor = adjustKForPivot(c2.id, getKFactor(c2Rating));
 
 		if (winnerId === "same") {
 			c1.ratings[vector].rating = getNewELO(
 				c1Rating,
 				expectedScore,
 				0.5,
-				kFactor
+				c1KFactor
 			);
 			c2.ratings[vector].rating = getNewELO(
 				c2Rating,
 				1 - expectedScore,
 				0.5,
-				kFactor
+				c2KFactor
 			);
 		} else if (winnerId === c1.id) {
 			c1.ratings[vector].rating = getNewELO(
 				c1Rating,
 				expectedScore,
 				1,
-				kFactor
+				c1KFactor
 			);
 			c2.ratings[vector].rating = getNewELO(
 				c2Rating,
 				1 - expectedScore,
 				0,
-				kFactor
+				c2KFactor
 			);
 		} else if (winnerId === c2.id) {
 			c1.ratings[vector].rating = getNewELO(
 				c1Rating,
 				expectedScore,
 				0,
-				kFactor
+				c1KFactor
 			);
 			c2.ratings[vector].rating = getNewELO(
 				c2Rating,
 				1 - expectedScore,
 				1,
-				kFactor
+				c2KFactor
 			);
 		} else {
 			throw new Error("Invalid winnerId");
@@ -102,15 +119,25 @@ function getNewELO(
 	return rating + kFactor * (actualScore - expectedScore);
 }
 
+export interface GeneratedPairings {
+	comparisons: UnfilledComparison[];
+	pivotIds: string[];
+	pivotMatchCounts: Record<string, number>;
+}
+
 export function generatePairings(
 	rankingGroup: RankingGroupNames,
 	candidates: Candidate[],
 	round: Round
-): UnfilledComparison[] {
+): GeneratedPairings {
 	let numCandidates = candidates.length;
 
 	// pick the pivots (numPivots)
 	let numPivots = round.numPivots;
+
+	if (numPivots <= 0) {
+		throw new Error("Round must have at least one pivot");
+	}
 
 	if (numCandidates < numPivots) {
 		throw new Error("Not enough candidates to generate pairings");
@@ -126,6 +153,11 @@ export function generatePairings(
 	}
 
 	const pivotIndicesArray = Array.from(pivotIndices);
+	const pivotIds = pivotIndicesArray.map((index) => candidates[index].id);
+	const pivotMatchCounts: Record<string, number> = {};
+	pivotIds.forEach((id) => {
+		pivotMatchCounts[id] = 0;
+	});
 
 	// for each candidate that's not in the pivots, generate a comparison with one of the pivots
 	let comparisons: UnfilledComparison[] = [];
@@ -141,6 +173,8 @@ export function generatePairings(
 
 		const candidateID = candidate.id;
 		const pivotID = pivot.id;
+
+		pivotMatchCounts[pivotID] = (pivotMatchCounts[pivotID] || 0) + 1;
 
 		let comparison: UnfilledComparison = {
 			id: `c-${pivotID}-${candidateID}`,
@@ -165,5 +199,5 @@ export function generatePairings(
 		comparisons.push(comparison);
 	}
 
-	return comparisons;
+	return { comparisons, pivotIds, pivotMatchCounts };
 }

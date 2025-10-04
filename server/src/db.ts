@@ -233,11 +233,11 @@ export async function runGeneratePairings(
 
 			// create the pairings
 			console.log("generating pairings");
-			const pairings = generatePairings(
-				rankingGroup,
-				profilesData,
-				currentRoundObj
-			);
+			const {
+				comparisons,
+				pivotIds,
+				pivotMatchCounts,
+			} = generatePairings(rankingGroup, profilesData, currentRoundObj);
 
 			// write the pairings to the database
 			console.log("writing pairings to db");
@@ -248,14 +248,16 @@ export async function runGeneratePairings(
 				.doc(currentRound.toString())
 				.collection("pairings");
 
-			console.log(pairings);
-			pairings.forEach((pairing) => {
+			console.log(comparisons);
+			comparisons.forEach((pairing) => {
 				t.set(pairingsRef.doc(pairing.id), pairing);
 			});
 
 			console.log("updating ranking group");
 			// update the round status to IN_PROGRESS
 			currentRoundObj.status = RoundStatus.IN_PROGRESS;
+			currentRoundObj.pivotIds = pivotIds;
+			currentRoundObj.pivotMatchCounts = pivotMatchCounts;
 			t.set(rankingGroupRef, rankingGroupData);
 
 			console.log("done");
@@ -493,8 +495,15 @@ export async function runCompleteComparison(
 		const c1 = profiles[candidateIds[0]];
 		const c2 = profiles[candidateIds[1]];
 
+		const pivotId = comparisonData.pivot;
+		const pivotMatchCount =
+			rankingGroupData.rounds?.[currentRound]?.pivotMatchCounts?.[pivotId] || 1;
+
 		// calculate the new ELO ratings
-		calculateNewELOs(filledComparison, winners);
+		calculateNewELOs(filledComparison, winners, {
+			pivotId,
+			pivotMatchCount,
+		});
 
 		// update the comparison document
 

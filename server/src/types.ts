@@ -75,6 +75,8 @@ export interface Round {
 	keepPercentage: number;
 	numPivots: number;
 	status?: RoundStatus;
+	pivotIds?: string[];
+	pivotMatchCounts?: Record<string, number>;
 }
 
 export enum RoundStatus {
