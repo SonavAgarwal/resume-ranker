@@ -2,6 +2,7 @@
 
 import { useAuthToken } from '@/hooks/useAuthToken'
 import { Candidate } from '@/lib/types'
+import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import useSWR from 'swr'
@@ -56,11 +57,23 @@ const Page = () => {
                     key={profile.id}
                     className="flex w-1/2 flex-row items-center justify-between gap-4"
                 >
-                    <p>{profile.id}</p>
+                    <Link
+                        href={`/results/${rankingGroup}/${profile.id}`}
+                        className="text-blue-500 hover:underline"
+                    >
+                        {profile.id}
+                    </Link>
                     <p>{profile.name}</p>
                     <p>{profile.overallRating}</p>
                 </div>
             ))}
+
+            {/* list of names on new lines, for easy copy paste */}
+            <div className="flex flex-col gap-2">
+                {profiles.map((profile: Candidate) => (
+                    <p key={profile.id}>{profile.name}</p>
+                ))}
+            </div>
         </div>
     )
 }

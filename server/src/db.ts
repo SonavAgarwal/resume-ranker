@@ -1,7 +1,7 @@
 import admin, { firestore } from "firebase-admin";
 import { calculateNewELOs, generatePairings } from "./algorithm";
 import { db } from "./firebase";
-import { RankingGroupNames, rrConfig } from "./rrConfig.alias";
+import { BASE_COLLECTION, RankingGroupNames, rrConfig } from "./rrConfig.alias";
 import {
 	Candidate,
 	Comparison,
@@ -45,7 +45,7 @@ export async function uploadProfiles(
 	const batch = db.batch();
 
 	// update the doc rankingGroup in the rankingGroups collection
-	const rankingGroupRef = db.collection("rankingGroups").doc(rankingGroup);
+	const rankingGroupRef = db.collection(BASE_COLLECTION).doc(rankingGroup);
 	// add number of profiles to the rankingGroup
 	const numNewProfiles = profiles.length;
 
@@ -80,7 +80,7 @@ export async function uploadProfiles(
 	// insert the profiles into the database
 	profiles.forEach((profile) => {
 		const docRef = db
-			.collection("rankingGroups")
+			.collection(BASE_COLLECTION)
 			.doc(rankingGroup)
 			.collection("profiles")
 			.doc(profile.id);
@@ -97,7 +97,7 @@ export async function getProfile(
 	id: string
 ): Promise<Candidate> {
 	const doc = await db
-		.collection("rankingGroups")
+		.collection(BASE_COLLECTION)
 		.doc(rankingGroup)
 		.collection("profiles")
 		.doc(id)
@@ -120,7 +120,7 @@ export async function getProfiles(
 }
 
 export async function getRankingGroups(): Promise<RankingGroup[]> {
-	const snapshot = await db.collection("rankingGroups").listDocuments();
+	const snapshot = await db.collection(BASE_COLLECTION).listDocuments();
 	const rankingGroups: RankingGroup[] = [];
 	for (const doc of snapshot) {
 		const data = await doc.get();
@@ -155,7 +155,7 @@ export async function runGeneratePairings(
 		console.log("running generate pairings");
 		const transactionResult = await db.runTransaction(async (t) => {
 			// get the rankingGroup document
-			const rankingGroupRef = db.collection("rankingGroups").doc(rankingGroup);
+			const rankingGroupRef = db.collection(BASE_COLLECTION).doc(rankingGroup);
 			const rankingGroupDoc = await t.get(rankingGroupRef);
 			const rankingGroupData = rankingGroupDoc.data() as RankingGroup;
 
@@ -214,7 +214,7 @@ export async function runGeneratePairings(
 
 			// get all the profiles ordered by their overall rating
 			const profiles = await db
-				.collection("rankingGroups")
+				.collection(BASE_COLLECTION)
 				.doc(rankingGroup)
 				.collection("profiles")
 				.orderBy("overallRating", "desc")
@@ -242,7 +242,7 @@ export async function runGeneratePairings(
 			// write the pairings to the database
 			console.log("writing pairings to db");
 			const pairingsRef = db
-				.collection("rankingGroups")
+				.collection(BASE_COLLECTION)
 				.doc(rankingGroup)
 				.collection("rounds")
 				.doc(currentRound.toString())
@@ -274,7 +274,7 @@ export async function getNextComparisonMeta(
 	// open a transaction
 	const comparison = await db.runTransaction(async (t) => {
 		// get the rankingGroup document
-		const rankingGroupRef = db.collection("rankingGroups").doc(rankingGroup);
+		const rankingGroupRef = db.collection(BASE_COLLECTION).doc(rankingGroup);
 		const rankingGroupDoc = await t.get(rankingGroupRef);
 		const rankingGroupData = rankingGroupDoc.data() as RankingGroup;
 
@@ -297,7 +297,7 @@ export async function getNextComparisonMeta(
 
 		// first check if there's a comparison that the ranker hasn't graded
 		const ungraded = db
-			.collection("rankingGroups")
+			.collection(BASE_COLLECTION)
 			.doc(rankingGroup)
 			.collection("rounds")
 			.doc(currentRound.toString())
@@ -319,7 +319,7 @@ export async function getNextComparisonMeta(
 		// check if there's a comparison that has the lastPivot
 		if (lastPivot) {
 			const pivot = db
-				.collection("rankingGroups")
+				.collection(BASE_COLLECTION)
 				.doc(rankingGroup)
 				.collection("rounds")
 				.doc(currentRound.toString())
@@ -346,7 +346,7 @@ export async function getNextComparisonMeta(
 
 		// get any pairings that the ranker hasn't graded
 		const pairings = db
-			.collection("rankingGroups")
+			.collection(BASE_COLLECTION)
 			.doc(rankingGroup)
 			.collection("rounds")
 			.doc(currentRound.toString())
@@ -362,7 +362,7 @@ export async function getNextComparisonMeta(
 		if (pairingsSnapshot.empty) {
 			// look for assigned but expired pairings (5 minutes timeout)
 			const expiredPairings = db
-				.collection("rankingGroups")
+				.collection(BASE_COLLECTION)
 				.doc(rankingGroup)
 				.collection("rounds")
 				.doc(currentRound.toString())
@@ -409,7 +409,7 @@ export async function checkIfRoundOver(rankingGroup: RankingGroupNames) {
 	// open a transaction
 	const roundOver = await db.runTransaction(async (t) => {
 		// get the rankingGroup document
-		const rankingGroupRef = db.collection("rankingGroups").doc(rankingGroup);
+		const rankingGroupRef = db.collection(BASE_COLLECTION).doc(rankingGroup);
 		const rankingGroupDoc = await t.get(rankingGroupRef);
 		const rankingGroupData = rankingGroupDoc.data() as RankingGroup;
 
@@ -422,7 +422,7 @@ export async function checkIfRoundOver(rankingGroup: RankingGroupNames) {
 
 		// check if all the pairings have been graded
 		const pairings = db
-			.collection("rankingGroups")
+			.collection(BASE_COLLECTION)
 			.doc(rankingGroup)
 			.collection("rounds")
 			.doc(currentRound.toString())
@@ -448,7 +448,7 @@ export async function checkIfRoundOver(rankingGroup: RankingGroupNames) {
 // delete ranking group
 export async function deleteRankingGroup(rankingGroup: RankingGroupNames) {
 	// use recursive delete
-	const rgref = db.collection("rankingGroups").doc(rankingGroup);
+	const rgref = db.collection(BASE_COLLECTION).doc(rankingGroup);
 	admin.firestore().recursiveDelete(rgref);
 }
 
@@ -460,7 +460,7 @@ export async function runCompleteComparison(
 	// open a transaction
 	await db.runTransaction(async (t) => {
 		// get the rankingGroup document
-		const rankingGroupRef = db.collection("rankingGroups").doc(rankingGroup);
+		const rankingGroupRef = db.collection(BASE_COLLECTION).doc(rankingGroup);
 		const rankingGroupDoc = await t.get(rankingGroupRef);
 		const rankingGroupData = rankingGroupDoc.data() as RankingGroup;
 		if (!rankingGroupData) {
@@ -472,7 +472,7 @@ export async function runCompleteComparison(
 
 		// get the comparison document
 		const comparisonRef = db
-			.collection("rankingGroups")
+			.collection(BASE_COLLECTION)
 			.doc(rankingGroup)
 			.collection("rounds")
 			.doc(currentRound.toString())
@@ -512,7 +512,7 @@ export async function runCompleteComparison(
 
 		t.set(
 			db
-				.collection("rankingGroups")
+				.collection(BASE_COLLECTION)
 				.doc(rankingGroup)
 				.collection("profiles")
 				.doc(c1.id),
@@ -521,7 +521,7 @@ export async function runCompleteComparison(
 
 		t.set(
 			db
-				.collection("rankingGroups")
+				.collection(BASE_COLLECTION)
 				.doc(rankingGroup)
 				.collection("profiles")
 				.doc(c2.id),
@@ -533,7 +533,7 @@ export async function runCompleteComparison(
 export async function getResults(rankingGroup: RankingGroupNames) {
 	// get the profiles
 	const profiles = await db
-		.collection("rankingGroups")
+		.collection(BASE_COLLECTION)
 		.doc(rankingGroup)
 		.collection("profiles")
 		.orderBy("overallRating", "desc")
@@ -549,7 +549,7 @@ export async function starCandidate(
 ) {
 	// get the profile
 	const profileRef = db
-		.collection("rankingGroups")
+		.collection(BASE_COLLECTION)
 		.doc(rankingGroup)
 		.collection("profiles")
 		.doc(candidateId);
@@ -567,7 +567,7 @@ export async function unstarCandidate(
 ) {
 	// get the profile
 	const profileRef = db
-		.collection("rankingGroups")
+		.collection(BASE_COLLECTION)
 		.doc(rankingGroup)
 		.collection("profiles")
 		.doc(candidateId);
