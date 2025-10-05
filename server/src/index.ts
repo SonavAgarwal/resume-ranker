@@ -150,6 +150,13 @@ app.get("/comparison", async (req: express.Request, res: express.Response) => {
 			res.status(400).json({ error: "Ranking group not found" });
 			return;
 		}
+		if (comparison === "WAITING_FOR_OTHER_RANKERS") {
+			res.status(202).json({
+				error:
+					"All comparisons are currently being graded. Please check back in a bit.",
+			});
+			return;
+		}
 		if (comparison === "NO_UNGRADED_COMPARISONS") {
 			res.status(202).json({
 				error: "No ungraded comparisons. Check back in a bit.",

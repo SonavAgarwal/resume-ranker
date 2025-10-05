@@ -146,6 +146,46 @@ export async function advanceRound(
 	runGeneratePairings(rankingGroup, !firstRound);
 }
 
+export async function checkIfRoundOver(rankingGroup: RankingGroupNames) {
+	// open a transaction
+	const roundOver = await db.runTransaction(async (t) => {
+		// get the rankingGroup document
+		const rankingGroupRef = db.collection(BASE_COLLECTION).doc(rankingGroup);
+		const rankingGroupDoc = await t.get(rankingGroupRef);
+		const rankingGroupData = rankingGroupDoc.data() as RankingGroup;
+
+		// check the round status
+		let currentRound = rankingGroupData.currentRound;
+		let roundStatus = rankingGroupData.rounds[currentRound].status;
+		if (roundStatus !== RoundStatus.IN_PROGRESS) {
+			return;
+		}
+
+		// check if all the pairings have been graded
+		const pairings = db
+			.collection(BASE_COLLECTION)
+			.doc(rankingGroup)
+			.collection("rounds")
+			.doc(currentRound.toString())
+			.collection("pairings")
+			.where("graded", "==", false);
+
+		const pairingsSnapshot = (await t.get(
+			pairings
+		)) as firestore.QuerySnapshot<UnfilledComparison>;
+
+		if (pairingsSnapshot.empty) {
+			// update the round status to FINISHED
+			let updateObject: any = {};
+			updateObject[`rounds.${currentRound}.status`] = RoundStatus.COMPLETED;
+			updateObject[`currentRound`] = rankingGroupData.currentRound;
+			t.update(rankingGroupRef, updateObject);
+		}
+	});
+
+	return roundOver;
+}
+
 // advances the round and generates the pairings
 export async function runGeneratePairings(
 	rankingGroup: RankingGroupNames,
@@ -184,6 +224,24 @@ export async function runGeneratePairings(
 					RoundStatus.IN_PROGRESS
 				) {
 					console.log("round not in progress");
+					return;
+				}
+
+				// check if all the pairings have been graded
+				const pairings = db
+					.collection(BASE_COLLECTION)
+					.doc(rankingGroup)
+					.collection("rounds")
+					.doc(currentRound.toString())
+					.collection("pairings")
+					.where("graded", "==", false);
+
+				const pairingsSnapshot = (await t.get(
+					pairings
+				)) as firestore.QuerySnapshot<UnfilledComparison>;
+
+				if (!pairingsSnapshot.empty) {
+					console.log("not all pairings graded");
 					return;
 				}
 
@@ -364,34 +422,57 @@ export async function getNextComparisonMeta(
 		)) as firestore.QuerySnapshot<UnfilledComparison>;
 
 		if (pairingsSnapshot.empty) {
-			// look for assigned but expired pairings (3 minutes timeout)
-			const expiredPairings = db
+			// look for assigned but ungraded pairings (30 seconds timeout)
+			const ungradedButAssigned = db
 				.collection(BASE_COLLECTION)
 				.doc(rankingGroup)
 				.collection("rounds")
 				.doc(currentRound.toString())
 				.collection("pairings")
 				.where("graded", "==", false)
-				.where(
-					"assignedAt",
-					"<",
-					admin.firestore.Timestamp.fromMillis(Date.now() - 3 * 60 * 1000)
-				)
+				.where("grader", "!=", null)
+				// .where(
+				// 	`assignedAt`,
+				// 	"<",
+				// 	admin.firestore.Timestamp.fromMillis(Date.now() - 30 * 1000)
+				// )
 				.limit(1);
 
-			const expiredPairingsSnapshot = (await t.get(
-				expiredPairings
+			const ungradedButAssignedSnapshot = (await t.get(
+				ungradedButAssigned
 			)) as firestore.QuerySnapshot<UnfilledComparison>;
 
-			if (!expiredPairingsSnapshot.empty) {
+			const expiredPairingsSnapshot = ungradedButAssignedSnapshot.docs.filter(
+				(doc) => {
+					const data = doc.data() as UnfilledComparison;
+					if (!data.assignedAt) return true; // if no assignedAt, consider it expired
+					const assignedAtMillis = data.assignedAt.toMillis();
+					return assignedAtMillis < Date.now() - 30 * 1000;
+				}
+			);
+
+			if (expiredPairingsSnapshot.length > 0) {
 				const expiredPairing =
-					expiredPairingsSnapshot.docs[0].data() as UnfilledComparison;
+					expiredPairingsSnapshot[0].data() as UnfilledComparison;
 				// assign the comparison to the ranker
-				t.update(expiredPairingsSnapshot.docs[0].ref, {
+				t.update(expiredPairingsSnapshot[0].ref, {
 					grader: rankerId,
 					assignedAt: admin.firestore.Timestamp.now(),
 				});
 				return expiredPairing;
+			}
+
+			const unexpiredButAssigned = ungradedButAssignedSnapshot.docs.filter(
+				(doc) => {
+					const data = doc.data() as UnfilledComparison;
+					if (!data.assignedAt) return false;
+					const assignedAtMillis = data.assignedAt.toMillis();
+					return assignedAtMillis >= Date.now() - 30 * 1000;
+				}
+			);
+
+			if (unexpiredButAssigned.length > 0) {
+				return "WAITING_FOR_OTHER_RANKERS";
 			}
 
 			return "NO_UNGRADED_COMPARISONS";
@@ -409,46 +490,6 @@ export async function getNextComparisonMeta(
 	});
 
 	return comparison;
-}
-
-export async function checkIfRoundOver(rankingGroup: RankingGroupNames) {
-	// open a transaction
-	const roundOver = await db.runTransaction(async (t) => {
-		// get the rankingGroup document
-		const rankingGroupRef = db.collection(BASE_COLLECTION).doc(rankingGroup);
-		const rankingGroupDoc = await t.get(rankingGroupRef);
-		const rankingGroupData = rankingGroupDoc.data() as RankingGroup;
-
-		// check the round status
-		let currentRound = rankingGroupData.currentRound;
-		let roundStatus = rankingGroupData.rounds[currentRound].status;
-		if (roundStatus !== RoundStatus.IN_PROGRESS) {
-			return;
-		}
-
-		// check if all the pairings have been graded
-		const pairings = db
-			.collection(BASE_COLLECTION)
-			.doc(rankingGroup)
-			.collection("rounds")
-			.doc(currentRound.toString())
-			.collection("pairings")
-			.where("graded", "==", false);
-
-		const pairingsSnapshot = (await t.get(
-			pairings
-		)) as firestore.QuerySnapshot<UnfilledComparison>;
-
-		if (pairingsSnapshot.empty) {
-			// update the round status to FINISHED
-			let updateObject: any = {};
-			updateObject[`rounds.${currentRound}.status`] = RoundStatus.COMPLETED;
-			updateObject[`currentRound`] = rankingGroupData.currentRound;
-			t.update(rankingGroupRef, updateObject);
-		}
-	});
-
-	return roundOver;
 }
 
 // delete ranking group
