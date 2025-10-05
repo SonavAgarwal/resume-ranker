@@ -233,11 +233,11 @@ export async function runGeneratePairings(
 
 			// create the pairings
 			console.log("generating pairings");
-			const {
-				comparisons,
-				pivotIds,
-				pivotMatchCounts,
-			} = generatePairings(rankingGroup, profilesData, currentRoundObj);
+			const { comparisons, pivotIds, pivotMatchCounts } = generatePairings(
+				rankingGroup,
+				profilesData,
+				currentRoundObj
+			);
 
 			// write the pairings to the database
 			console.log("writing pairings to db");
@@ -339,8 +339,10 @@ export async function getNextComparisonMeta(
 				const chainedComparison =
 					pivotSnapshot.docs[0].data() as UnfilledComparison;
 				chainedComparison.grader = rankerId;
+				chainedComparison.assignedAt = admin.firestore.Timestamp.now();
 				t.update(pivotSnapshot.docs[0].ref, {
 					grader: rankerId,
+					assignedAt: admin.firestore.Timestamp.now(),
 				});
 				return chainedComparison;
 			}
@@ -362,7 +364,7 @@ export async function getNextComparisonMeta(
 		)) as firestore.QuerySnapshot<UnfilledComparison>;
 
 		if (pairingsSnapshot.empty) {
-			// look for assigned but expired pairings (5 minutes timeout)
+			// look for assigned but expired pairings (3 minutes timeout)
 			const expiredPairings = db
 				.collection(BASE_COLLECTION)
 				.doc(rankingGroup)
@@ -373,7 +375,7 @@ export async function getNextComparisonMeta(
 				.where(
 					"assignedAt",
 					"<",
-					admin.firestore.Timestamp.fromMillis(Date.now() - 5 * 60 * 1000)
+					admin.firestore.Timestamp.fromMillis(Date.now() - 3 * 60 * 1000)
 				)
 				.limit(1);
 
@@ -398,8 +400,10 @@ export async function getNextComparisonMeta(
 		// assign the comparison to the ranker
 		const comparison = pairingsSnapshot.docs[0].data() as UnfilledComparison;
 		comparison.grader = rankerId;
+		comparison.assignedAt = admin.firestore.Timestamp.now();
 		t.update(pairingsSnapshot.docs[0].ref, {
 			grader: rankerId,
+			assignedAt: admin.firestore.Timestamp.now(),
 		});
 		return comparison;
 	});
